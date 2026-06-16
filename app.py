@@ -6,6 +6,7 @@ import json
 from PIL import Image
 import google.generativeai as genai
 
+# Corrected LangChain Imports for the latest versions
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -22,11 +23,11 @@ st.set_page_config(page_title="The Vivriti Oracle", layout="wide")
 # Generate Dummy Data if it doesn't exist
 if not os.path.exists("dummy_data"):
     os.makedirs("dummy_data")
-    
+
     # Dummy HR Policy
     with open("dummy_data/HR_Policy.txt", "w") as f:
         f.write("Vivriti Remote Work Policy 2026: Employees in the tech and product teams are allowed 2 days of remote work per week. Mandatory office days are Tuesday and Wednesday. For escalations, contact hr@vivriti.com.")
-        
+
     # Dummy Cash Flow Data
     cf_data = {
         "Month": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
@@ -98,7 +99,7 @@ tab1, tab2, tab3 = st.tabs(["💬 Employee Chat", "📊 Finance Visualizer", "�
 # --- TAB 1: EMPLOYEE CHAT ---
 with tab1:
     st.subheader("Ask the Oracle")
-    
+
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
@@ -129,18 +130,18 @@ with tab1:
         # Handle Escalation Workflow
         if "CONFIDENCE_LOW" in answer:
             st.chat_message("assistant").write("I'm sorry, I don't have enough information to answer this with high confidence. Please route this to an expert.")
-            
+
             with st.form("escalation_form"):
                 st.write("### 🚨 Route to Expert")
                 dept = st.selectbox("Select Department", ["HR", "Credit", "Capital Markets", "Tech"])
                 query = st.text_area("Your Query", value=prompt)
                 submitted = st.form_submit_button("Raise CXO Ticket & Show Contact")
-                
+
                 if submitted:
                     tickets = load_tickets()
                     tickets.append({"id": len(tickets)+1, "dept": dept, "query": query, "status": "Open"})
                     save_tickets(tickets)
-                    
+
                     st.success("Ticket raised!")
                     st.info(f"**Contact Info:**\n* Department Head: {dept}_head@vivriti.com\n* Teams: ping {dept} Lead")
         else:
@@ -152,7 +153,7 @@ with tab1:
 with tab2:
     st.subheader("Interactive Cash Flow Visualizer")
     st.markdown("Upload a Cash Flow model or view the dummy project data.")
-    
+
     df = pd.read_csv("dummy_data/Project_CashFlows.csv")
     df['Net_Cash_Flow'] = df['Cash_In'] + df['Cash_Out']
     df['Cumulative_Cash'] = df['Net_Cash_Flow'].cumsum()
@@ -160,13 +161,13 @@ with tab2:
     col1, col2 = st.columns([2, 1])
     with col1:
         # "Finance Professor" Plotly Chart
-        fig = px.bar(df, x='Month', y=['Cash_In', 'Cash_Out'], 
+        fig = px.bar(df, x='Month', y=['Cash_In', 'Cash_Out'],
                      title="Monthly Cash Inflows vs Outflows",
                      barmode='group',
                      color_discrete_sequence=['#2ecc71', '#e74c3c'])
         st.plotly_chart(fig, use_container_width=True)
-        
-        fig2 = px.line(df, x='Month', y='Cumulative_Cash', 
+
+        fig2 = px.line(df, x='Month', y='Cumulative_Cash',
                        title="Cumulative Cash Flow Curve (Breakeven Analysis)",
                        markers=True)
         fig2.add_hline(y=0, line_dash="dash", line_color="red")
@@ -179,7 +180,7 @@ with tab2:
             st.success(f"**Breakeven achieved in Month {breakeven_month}.**")
         else:
             st.error("**Project does not break even in the projected timeline.**")
-        
+
         st.markdown("### The Tape (Raw Data)")
         st.dataframe(df, hide_index=True)
 
@@ -189,7 +190,7 @@ with tab3:
     st.subheader("CXO Dashboard: Resolve & Teach")
     tickets = load_tickets()
     open_tickets = [t for t in tickets if t["status"] == "Open"]
-    
+
     if not open_tickets:
         st.success("No open escalations. The Oracle is up to date!")
     else:
@@ -197,10 +198,10 @@ with tab3:
             with st.expander(f"Ticket #{t['id']} | Dept: {t['dept']} | Query: {t['query']}"):
                 resolution_text = st.text_area("Resolution Notes (Type the answer here)", key=f"res_{t['id']}")
                 uploaded_image = st.file_uploader("Upload supporting screenshot (optional)", type=["png", "jpg", "jpeg"], key=f"img_{t['id']}")
-                
+
                 if st.button("Close Ticket & Update Oracle Knowledge Base", key=f"btn_{t['id']}"):
                     extracted_text = ""
-                    
+
                     # 1. Image OCR using Gemini Native Vision
                     if uploaded_image:
                         st.info("Extracting text from image via Gemini Vision...")
@@ -208,19 +209,20 @@ with tab3:
                         vision_model = genai.GenerativeModel('gemini-1.5-flash')
                         vision_response = vision_model.generate_content([img, "Extract all text and describe any process/flowchart in this image comprehensively."])
                         extracted_text = vision_response.text
-                    
+
                     # 2. Combine and add to FAISS
                     final_knowledge = f"Query: {t['query']}\nResolution: {resolution_text}\nImage Data: {extracted_text}"
-                    
+
                     new_doc = Document(page_content=final_knowledge)
                     vector_store.add_documents([new_doc])
                     vector_store.save_local("faiss_index")
-                    
+
                     # 3. Close ticket
                     for idx, ticket in enumerate(tickets):
                         if ticket['id'] == t['id']:
                             tickets[idx]['status'] = "Closed"
                     save_tickets(tickets)
-                    
+
                     st.success("Knowledge ingested! The Oracle now knows the answer to this. Refresh the page to see changes.")
                     st.rerun()
+
