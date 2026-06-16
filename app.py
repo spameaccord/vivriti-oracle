@@ -6,37 +6,14 @@ import json
 from PIL import Image
 import google.generativeai as genai
 
-# ==========================================
-# ROBUST, SELF-HEALING LANGCHAIN IMPORTS
-# ==========================================
+# Imports for pinned LangChain versions
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
-
-# This block tries modern and legacy import paths to prevent ModuleNotFoundError
-try:
-    # The most common, modern path
-    from langchain.chains import create_retrieval_chain
-except ImportError:
-    try:
-        # An older, but still possible path
-        from langchain.chains.retrieval import create_retrieval_chain
-    except ImportError:
-        st.error("FATAL ERROR: Could not import 'create_retrieval_chain'. Deployment failed. Check LangChain version.")
-        st.stop()
-
-try:
-    # The most common, modern path
-    from langchain.chains.combine_documents import create_stuff_documents_chain
-except ImportError:
-    try:
-        # An older path
-        from langchain.chains.combine_documents.stuff import create_stuff_documents_chain
-    except ImportError:
-        st.error("FATAL ERROR: Could not import 'create_stuff_documents_chain'. Deployment failed. Check LangChain version.")
-        st.stop()
 
 # ==========================================
 # 1. SETUP & DUMMY DATA GENERATION
@@ -78,7 +55,7 @@ genai.configure(api_key=api_key)
 # 3. CORE APPLICATION LOGIC
 # ==========================================
 @st.cache_resource
-def get_llm_and_vectorstore(_api_key):
+def get_llm_and_vectorstore():
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
     if os.path.exists("faiss_index"):
@@ -93,7 +70,7 @@ def get_llm_and_vectorstore(_api_key):
         vector_store.save_local("faiss_index")
     return llm, vector_store
 
-llm, vector_store = get_llm_and_vectorstore(api_key)
+llm, vector_store = get_llm_and_vectorstore()
 
 def load_tickets():
     if os.path.exists("tickets.json"):
@@ -189,4 +166,3 @@ with tab3:
                     save_tickets(tickets)
                     st.success(f"Ticket #{t['id']} closed. The Oracle is now smarter. Please refresh.")
                     st.rerun()
-
