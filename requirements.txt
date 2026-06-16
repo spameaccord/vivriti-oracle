@@ -6,3 +6,4 @@ pandas
 plotly
 pillow
 google-generativeai
+langchain-community
