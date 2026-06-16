@@ -6,7 +6,7 @@ import json
 from PIL import Image
 import google.generativeai as genai
 
-# Corrected LangChain Imports for the latest versions
+# Corrected LangChain Imports for latest versions
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -64,19 +64,29 @@ llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
 # Load or Create FAISS Knowledge Base
 @st.cache_resource
 def load_knowledge_base():
+    # Check if the FAISS index exists. If not, create it.
     if os.path.exists("faiss_index"):
         return FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
     else:
-        # Initial ingestion of dummy text
-        with open("dummy_data/HR_Policy.txt", "r") as f:
-            text = f.read()
-        splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-        docs = [Document(page_content=chunk) for chunk in splitter.split_text(text)]
-        vector_store = FAISS.from_documents(docs, embeddings)
-        vector_store.save_local("faiss_index")
-        return vector_store
+        # Initial ingestion of dummy text from the dummy_data folder
+        documents = []
+        for file_name in os.listdir("dummy_data"):
+            if file_name.endswith(".txt"):
+                with open(os.path.join("dummy_data", file_name), "r") as f:
+                    documents.append(Document(page_content=f.read()))
+
+        if not documents:
+             # Create a dummy document if no text files are found, to prevent errors
+            documents.append(Document(page_content="This is a dummy document."))
+
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        splits = text_splitter.split_documents(documents)
+        vectorstore = FAISS.from_documents(documents=splits, embedding=embeddings)
+        vectorstore.save_local("faiss_index")
+        return vectorstore
 
 vector_store = load_knowledge_base()
+
 
 # Helper: Load Tickets
 def load_tickets():
@@ -111,7 +121,7 @@ with tab1:
         st.session_state.messages.append({"role": "user", "content": prompt})
 
         # Retrieval Chain Setup
-        retriever = vector_store.as_retriever(search_kwargs={"k": 3})
+        retriever = vector_store.as_retriever()
         system_prompt = (
             "You are the Vivriti Oracle. Use the provided context to answer the user's question. "
             "If the answer is not in the context, strictly reply with: 'CONFIDENCE_LOW'."
@@ -121,8 +131,10 @@ with tab1:
             ("system", system_prompt),
             ("human", "{input}"),
         ])
-        qa_chain = create_stuff_documents_chain(llm, prompt_template)
-        rag_chain = create_retrieval_chain(retriever, qa_chain)
+
+        question_answer_chain = create_stuff_documents_chain(llm, prompt_template)
+        rag_chain = create_retrieval_chain(retriever, question_answer_chain)
+
 
         response = rag_chain.invoke({"input": prompt})
         answer = response["answer"]
@@ -225,4 +237,3 @@ with tab3:
 
                     st.success("Knowledge ingested! The Oracle now knows the answer to this. Refresh the page to see changes.")
                     st.rerun()
-
