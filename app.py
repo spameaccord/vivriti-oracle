@@ -6,14 +6,32 @@ import json
 from PIL import Image
 import google.generativeai as genai
 
-# Corrected LangChain Imports for latest versions
+# ==========================================
+# SELF-HEALING LANGCHAIN IMPORTS (BULLETPROOF)
+# ==========================================
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
+
+# Safe import for create_retrieval_chain
+try:
+    from langchain.chains.retrieval import create_retrieval_chain
+except ImportError:
+    try:
+        from langchain.chains import create_retrieval_chain
+    except ImportError:
+        raise ImportError("Could not import create_retrieval_chain from LangChain. Ensure langchain and langchain-community are installed.")
+
+# Safe import for create_stuff_documents_chain
+try:
+    from langchain.chains.combine_documents import create_stuff_documents_chain
+except ImportError:
+    try:
+        from langchain.chains.combine_documents.stuff import create_stuff_documents_chain
+    except ImportError:
+        raise ImportError("Could not import create_stuff_documents_chain from LangChain.")
 
 # ==========================================
 # 1. SETUP & DUMMY DATA GENERATION
@@ -28,9 +46,9 @@ if not os.path.exists("dummy_data"):
     with open("dummy_data/HR_Policy.txt", "w") as f:
         f.write("Vivriti Remote Work Policy 2026: Employees in the tech and product teams are allowed 2 days of remote work per week. Mandatory office days are Tuesday and Wednesday. For escalations, contact hr@vivriti.com.")
 
-    # Dummy Cash Flow Data
+    # [...](asc_slot://start-slot-1)Dummy Cash Flow Data
     cf_data = {
-        "Month": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+        "Month":,
         "Cash_In": [0, 0, 5000, 15000, 25000, 30000, 35000, 40000, 45000, 50000, 50000, 55000],
         "Cash_Out": [-50000, -20000, -10000, -5000, -5000, -5000, -5000, -5000, -5000, -5000, -5000, -5000]
     }
@@ -64,11 +82,9 @@ llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
 # Load or Create FAISS Knowledge Base
 @st.cache_resource
 def load_knowledge_base():
-    # Check if the FAISS index exists. If not, create it.
     if os.path.exists("faiss_index"):
         return FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
     else:
-        # Initial ingestion of dummy text from the dummy_data folder
         documents = []
         for file_name in os.listdir("dummy_data"):
             if file_name.endswith(".txt"):
@@ -76,7 +92,6 @@ def load_knowledge_base():
                     documents.append(Document(page_content=f.read()))
 
         if not documents:
-             # Create a dummy document if no text files are found, to prevent errors
             documents.append(Document(page_content="This is a dummy document."))
 
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
@@ -86,7 +101,6 @@ def load_knowledge_base():
         return vectorstore
 
 vector_store = load_knowledge_base()
-
 
 # Helper: Load Tickets
 def load_tickets():
@@ -135,7 +149,6 @@ with tab1:
         question_answer_chain = create_stuff_documents_chain(llm, prompt_template)
         rag_chain = create_retrieval_chain(retriever, question_answer_chain)
 
-
         response = rag_chain.invoke({"input": prompt})
         answer = response["answer"]
 
@@ -170,7 +183,7 @@ with tab2:
     df['Net_Cash_Flow'] = df['Cash_In'] + df['Cash_Out']
     df['Cumulative_Cash'] = df['Net_Cash_Flow'].cumsum()
 
-    col1, col2 = st.columns([2, 1])
+    col1, col2 = st.[...](asc_slot://start-slot-3)columns()
     with col1:
         # "Finance Professor" Plotly Chart
         fig = px.bar(df, x='Month', y=['Cash_In', 'Cash_Out'],
