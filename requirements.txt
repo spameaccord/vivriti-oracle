@@ -7,3 +7,4 @@ plotly
 pillow
 google-generativeai
 langchain-community
+langchain-text-splitters
