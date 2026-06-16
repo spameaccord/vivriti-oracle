@@ -1,0 +1,8 @@
+streamlit
+langchain
+langchain-google-genai
+faiss-cpu
+pandas
+plotly
+pillow
+google-generativeai
